@@ -86,8 +86,11 @@ def main():
         print("Starting GUI application...")
         print()
 
-        # Import PyQt6 after dependency check
-        from PyQt6.QtWidgets import QApplication, QMessageBox
+        # Import GUI components after dependency check
+        from PyQt6.QtWidgets import QApplication
+        from gui.main_window import MainWindow
+        from gui.config_tab import ConfigTab
+        from gui.status_tab import StatusTab
 
         # Create Qt application
         app = QApplication(sys.argv)
@@ -96,35 +99,37 @@ def main():
         app.setApplicationVersion("0.1.0-dev")
         app.setStyle("Fusion")
 
-        # Show message that GUI is not yet implemented
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Icon.Information)
-        msg.setWindowTitle("BRIDGE-WIN")
-        msg.setText("BRIDGE-WIN is starting...")
-        msg.setInformativeText(
-            "Project structure created successfully!\n\n"
-            "GUI implementation coming in Phase 3.\n\n"
-            "Current Status: Phase 1 - Foundation Complete"
-        )
-        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-        msg.exec()
+        # Create main window
+        window = MainWindow()
+
+        # Create and add tabs
+        config_tab = ConfigTab()
+        status_tab = StatusTab()
+
+        window.add_tab(config_tab, "Configuration", "config")
+        window.add_tab(status_tab, "Status & Logs", "status")
+
+        # Connect signals
+        config_tab.status_message.connect(window.set_status)
+
+        # Show window
+        window.show()
+
+        print("✓ GUI initialized successfully")
+        print("✓ Application running")
+        print()
+
+        # Run application event loop
+        return app.exec()
     else:
         print("⚠ Running in backend-only mode (no GUI)")
         print()
-        print("Project structure created successfully!")
+        print("Install PyQt6 to enable the graphical interface:")
+        print("  pip install PyQt6")
         print()
-        print("Current Status: Phase 1 - Foundation Complete")
+        print("Backend functionality is still available via Python API.")
         print()
-
-    print("Application initialized successfully!")
-    print()
-    print("Next steps:")
-    print("  1. Implement com0com backend (Phase 2)")
-    print("  2. Create GUI components (Phase 3)")
-    print("  3. Add sniffing functionality (Phase 4)")
-    print()
-
-    return 0
+        return 1
 
 if __name__ == "__main__":
     try:

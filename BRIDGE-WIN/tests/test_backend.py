@@ -4,8 +4,16 @@ Backend Testing Script
 Simple script to test com0com backend integration.
 Tests detection, port enumeration, and basic operations.
 
-Usage: python test_backend.py
+Usage:
+  From BRIDGE-WIN directory: python tests/test_backend.py
+  Or: python -m tests.test_backend
 """
+
+import sys
+from pathlib import Path
+
+# Add parent directory to path so we can import backend modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend.com0com_manager import Com0comManager
 from backend.virtual_ports import VirtualPortManager

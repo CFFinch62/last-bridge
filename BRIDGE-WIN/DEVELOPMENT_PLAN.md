@@ -85,49 +85,51 @@ BRIDGE-WIN is a Windows port of the Linux BRIDGE application, providing virtual 
 ---
 
 ### Phase 3: Basic GUI Implementation
-**Estimated Time**: 8-10 hours  
-**Status**: Not Started
+**Estimated Time**: 8-10 hours
+**Status**: ✅ COMPLETE
 
 #### 3.1 Main Window Structure
-- [ ] Create `gui/main_window.py`
-- [ ] Design main window layout (800x600 default)
-- [ ] Create menu bar (File, Tools, Help)
-- [ ] Create tab widget for different sections
-- [ ] Add status bar at bottom
-- [ ] Implement window icon
-- [ ] Add window close event handling
+- [x] Create `gui/main_window.py`
+- [x] Design main window layout (800x600 default)
+- [x] Create menu bar (File, Tools, Help)
+- [x] Create tab widget for different sections
+- [x] Add status bar at bottom
+- [x] Implement window icon
+- [x] Add window close event handling
 
 #### 3.2 Configuration Tab
-- [ ] Create `gui/config_tab.py`
-- [ ] Add port pair configuration section
-  - [ ] COM port 1 selection (dropdown)
-  - [ ] COM port 2 selection (dropdown)
-  - [ ] Custom port name inputs
-  - [ ] Port pair name/label
-- [ ] Add control buttons
-  - [ ] "Create Port Pair" button
-  - [ ] "Delete Port Pair" button
-  - [ ] "Start Bridge" button
-  - [ ] "Stop Bridge" button
-- [ ] Add port status display
-  - [ ] Show active port pairs
-  - [ ] Show port connection status
-- [ ] Connect UI to backend functions
+- [x] Create `gui/config_tab.py`
+- [x] Add port pair configuration section
+  - [x] COM port 1 selection (dropdown)
+  - [x] COM port 2 selection (dropdown)
+  - [x] Auto-select port option
+  - [x] Port pair creation UI
+- [x] Add control buttons
+  - [x] "Create Port Pair" button
+  - [x] "Delete Port Pair" button
+  - [x] "Refresh Ports" button
+  - [ ] "Start Bridge" button (deferred to Phase 4)
+  - [ ] "Stop Bridge" button (deferred to Phase 4)
+- [x] Add port status display
+  - [x] Show active port pairs in table
+  - [x] Show port parameters
+  - [x] Show com0com status
+- [x] Connect UI to backend functions
 
 #### 3.3 Status & Logging Tab
-- [ ] Create `gui/status_tab.py`
-- [ ] Add log viewer (QTextEdit with scrolling)
-- [ ] Add log level filtering (Info, Warning, Error)
-- [ ] Add clear log button
-- [ ] Add save log to file button
-- [ ] Implement real-time log updates
-- [ ] Add timestamp to log entries
-- [ ] Color-code log levels
+- [x] Create `gui/status_tab.py`
+- [x] Add log viewer (QTextEdit with scrolling)
+- [x] Add log level filtering (ALL, DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- [x] Add clear log button
+- [x] Add save log to file button
+- [x] Implement real-time log updates
+- [x] Add timestamp to log entries
+- [x] Color-code log levels
 
 **Deliverables**:
-- Functional GUI with tabs
-- Working port creation/deletion from GUI
-- Real-time status updates
+- ✅ Functional GUI with tabs
+- ✅ Working port creation/deletion from GUI (requires admin)
+- ✅ Real-time status updates and logging
 
 ---
 
