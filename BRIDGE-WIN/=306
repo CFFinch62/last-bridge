@@ -1,0 +1,15 @@
+Collecting PyQt6
+  Downloading pyqt6-6.10.0-cp39-abi3-win_amd64.whl.metadata (2.2 kB)
+Requirement already satisfied: pyserial in c:\dropbox\programming\languages_and_code\programming_projects\marine_electronics\serial comm\last bridge\bridge-win\venv\lib\site-packages (3.5)
+Requirement already satisfied: pywin32 in c:\dropbox\programming\languages_and_code\programming_projects\marine_electronics\serial comm\last bridge\bridge-win\venv\lib\site-packages (311)
+Collecting PyQt6-sip<14,>=13.8 (from PyQt6)
+  Downloading pyqt6_sip-13.10.2-cp314-cp314-win_amd64.whl.metadata (515 bytes)
+Collecting PyQt6-Qt6<6.11.0,>=6.10.0 (from PyQt6)
+  Downloading pyqt6_qt6-6.10.0-py3-none-win_amd64.whl.metadata (552 bytes)
+Downloading pyqt6-6.10.0-cp39-abi3-win_amd64.whl (25.8 MB)
+   ---------------------------------------- 25.8/25.8 MB 10.8 MB/s  0:00:02
+Downloading pyqt6_qt6-6.10.0-py3-none-win_amd64.whl (76.3 MB)
+   ---------------------------------------- 76.3/76.3 MB 11.4 MB/s  0:00:06
+Downloading pyqt6_sip-13.10.2-cp314-cp314-win_amd64.whl (55 kB)
+Installing collected packages: PyQt6-Qt6, PyQt6-sip, PyQt6
+

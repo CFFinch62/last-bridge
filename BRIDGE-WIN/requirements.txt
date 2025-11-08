@@ -1,0 +1,16 @@
+# BRIDGE-WIN Python Dependencies
+# Windows Virtual Null Modem Bridge with Serial Sniffing
+# Python 3.11+ required
+
+# GUI Framework
+PyQt6>=6.6.0
+
+# Serial Port Communication
+pyserial>=3.5
+
+# Windows-specific functionality
+pywin32>=306
+
+# Optional: For better Windows integration
+# pypiwin32>=223  # Alternative to pywin32
+
