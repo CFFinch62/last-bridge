@@ -134,12 +134,12 @@ Each entry includes:
 
 ## Development Statistics
 
-**Total Sessions**: 3
-**Total Time Spent**: 3.25 hours
+**Total Sessions**: 4
+**Total Time Spent**: 3.75 hours
 **Completion**: Phase 1 - 100% complete ✅
 
 **Files Created**: 12 (net: created 15, removed 3)
-**Files Modified**: 1 (CHANGELOG.md)
+**Files Modified**: 2 (bridge_win.py, CHANGELOG.md)
 **Lines of Code Written**: ~574 lines (excluding documentation)
 
 ---
@@ -504,6 +504,192 @@ Every session MUST start by reviewing these three files in order:
 
 ---
 
-**Last Updated**: 2025-11-08 (Session 3)
-**Next Session**: Review 3 docs, test application startup, begin Phase 2 (com0com integration)
+---
+
+#### Session 4: Dependencies Installation & Application Testing
+
+**Phase**: Phase 1 - Project Setup & Foundation
+**Time**: 0.5 hours
+**Status**: ✅ Complete
+
+**Tasks Completed**:
+1. ✅ Created Python virtual environment
+2. ✅ Installed dependencies (pyserial, pywin32)
+3. ✅ Identified PyQt6 compatibility issue with Python 3.14
+4. ✅ Updated bridge_win.py to support backend-only mode
+5. ✅ Successfully tested application
+6. ✅ Prepared for git commit
+
+**Technical Details**:
+
+**Python Version**: 3.14.0 (very new, released recently)
+
+**Dependencies Installed**:
+- ✅ pyserial 3.5 - Serial port communication
+- ✅ pywin32 311 - Windows API access
+- ❌ PyQt6 - Failed due to Windows MAX_PATH limitation + Python 3.14 incompatibility
+
+**PyQt6 Installation Issue**:
+```
+ERROR: Could not install packages due to an OSError: [Errno 2] No such file or directory:
+'C:\\Dropbox\\Programming\\...\\BRIDGE-WIN\\venv\\Lib\\site-packages\\PyQt6\\Qt6\\qml\\...
+\\pageindicatordelegate-indicator-delegate-current-hovered@2x.png'
+```
+
+**Root Causes**:
+1. **Windows MAX_PATH limitation** (260 characters) - Path too long for some PyQt6 files
+2. **Python 3.14 too new** - PyQt6/PySide6 don't support Python 3.14 yet (max 3.13)
+
+**Solution Implemented**:
+- Modified `bridge_win.py` to support **backend-only mode**
+- Application runs successfully without GUI
+- GUI will be added in Phase 3 when using Python 3.11-3.13
+
+**Code Changes** (`bridge_win.py`):
+```python
+def check_dependencies():
+    """Check if required dependencies are installed"""
+    gui_available = False
+
+    # Try PyQt6 first (test actual import, not just package)
+    try:
+        from PyQt6.QtWidgets import QApplication
+        gui_available = True
+        print("✓ PyQt6 available")
+    except ImportError:
+        print("⚠ PyQt6 not available")
+        print("  Note: Python 3.14 is very new, PyQt6 may not support it yet")
+        print("  Recommendation: Use Python 3.11-3.13 for full GUI support")
+
+    # Check pyserial and pywin32 (required)
+    # ... (checks for required dependencies)
+
+    return gui_available
+
+def main():
+    gui_available = check_dependencies()
+
+    if gui_available:
+        # Run with GUI
+        from PyQt6.QtWidgets import QApplication, QMessageBox
+        # ... GUI code
+    else:
+        # Run in backend-only mode
+        print("⚠ Running in backend-only mode (no GUI)")
+        print("Project structure created successfully!")
+```
+
+**Application Test Results**:
+```
+============================================================
+BRIDGE-WIN - Virtual Null Modem Bridge for Windows
+Version: 0.1.0-dev
+============================================================
+
+✓ Python version: 3.14.0
+
+⚠ PyQt6 not available
+  Note: Python 3.14 is very new, PyQt6 may not support it yet
+  Recommendation: Use Python 3.11-3.13 for full GUI support
+✓ pyserial available
+✓ pywin32 available
+
+⚠ Running in backend-only mode (no GUI)
+
+Project structure created successfully!
+
+Current Status: Phase 1 - Foundation Complete
+
+Application initialized successfully!
+
+Next steps:
+  1. Implement com0com backend (Phase 2)
+  2. Create GUI components (Phase 3)
+  3. Add sniffing functionality (Phase 4)
+```
+
+**Git Commit Status**: ⏳ Pending
+
+---
+
+#### Session 5: Dependency Installation Success - Python 3.13 + PyQt6
+
+**Phase**: Phase 1 - Project Setup & Foundation (Final)
+**Time**: 1 hour
+**Status**: ✅ Complete
+
+**Tasks Completed**:
+1. Enabled Windows Long Path support via registry
+2. Installed Python 3.13.0 alongside Python 3.14
+3. Recreated virtual environment with Python 3.13
+4. Successfully installed all dependencies including PyQt6
+5. Tested application with full GUI support
+
+**Technical Details**:
+
+**Problem Solved**: PyQt6 Installation Failure
+- **Root Cause 1**: Windows MAX_PATH limitation (260 characters)
+- **Root Cause 2**: Python 3.14 incompatibility (PyQt6 only supports up to 3.13)
+
+**Solution Implemented**:
+1. Enabled Windows Long Paths:
+   ```powershell
+   reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f
+   ```
+
+2. Installed Python 3.13.0 (kept Python 3.14 for other projects)
+
+3. Created new virtual environment:
+   ```bash
+   py -3.13 -m venv venv
+   ```
+
+4. Installed dependencies successfully:
+   ```bash
+   ./venv/Scripts/pip.exe install -r requirements.txt
+   ```
+
+**Dependencies Installed**:
+- ✅ PyQt6 6.10.0 (GUI framework)
+- ✅ PyQt6-Qt6 6.10.0 (Qt6 binaries)
+- ✅ PyQt6_sip 13.10.2 (SIP bindings)
+- ✅ pyserial 3.5 (serial communication)
+- ✅ pywin32 311 (Windows API)
+
+**Application Test Results**:
+```
+============================================================
+BRIDGE-WIN - Virtual Null Modem Bridge for Windows
+Version: 0.1.0-dev
+============================================================
+
+✓ Python version: 3.13.0
+✓ PyQt6 available
+✓ pyserial available
+✓ pywin32 available
+✓ All dependencies installed (including GUI)
+
+Starting GUI application...
+Application initialized successfully!
+```
+
+**Phase 1 Status**: ✅ **100% COMPLETE**
+- [x] Project structure created
+- [x] Virtual environment configured (Python 3.13.0)
+- [x] All dependencies installed (including GUI)
+- [x] Application tested successfully with full GUI support
+- [x] Ready for Phase 2 (com0com backend integration)
+
+**Files Modified**: None (dependency installation only)
+
+**Key Learnings**:
+1. Python 3.14 is too new for PyQt6/PySide6 (max support: Python 3.13)
+2. Multiple Python versions can coexist on Windows using `py -3.13` launcher
+3. Windows Long Path support requires registry edit + reboot
+4. Virtual environment can be recreated with different Python version easily
+
+---
+
+**Last Updated**: 2025-11-08 (Session 5)
+**Next Session**: Make git commit for Phase 1, begin Phase 2 (com0com integration)
 
