@@ -235,8 +235,8 @@ class MainWindow(QMainWindow):
             <li>TCP output for remote monitoring</li>
             <li>Real-time logging and statistics</li>
         </ul>
-        <p><b>License:</b> GPL</p>
-        <p><b>Author:</b> BRIDGE-WIN Development Team</p>
+        <p><b>License:</b> MIT</p>
+        <p><b>Author:</b> Fragillidae Software - Chuck Finch</p>
         """
         
         QMessageBox.about(self, "About BRIDGE-WIN", about_text)

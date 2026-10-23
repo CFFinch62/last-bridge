@@ -8,14 +8,17 @@ Author: BRIDGE-WIN Development Team
 License: GPL
 """
 
+from typing import Optional
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QLabel, QComboBox, QPushButton, QTableWidget,
     QTableWidgetItem, QMessageBox, QHeaderView
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 
 from backend.virtual_ports import VirtualPortManager
+from backend.bridge import SerialBridge, BridgeState
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -30,13 +33,14 @@ class ConfigTab(QWidget):
     def __init__(self, parent=None):
         """Initialize the configuration tab."""
         super().__init__(parent)
-        
+
         self.port_manager = VirtualPortManager()
-        
+        self.bridge: Optional[SerialBridge] = None
+
         self._init_ui()
         self._check_com0com()
         self.refresh_ports()
-        
+
         logger.info("Configuration tab initialized")
     
     def _init_ui(self):
@@ -44,16 +48,19 @@ class ConfigTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
-        
+
         # com0com status group
         self._create_status_group(layout)
-        
+
+        # Bridge control group
+        self._create_bridge_group(layout)
+
         # Port pair creation group
         self._create_creation_group(layout)
-        
+
         # Existing port pairs group
         self._create_pairs_group(layout)
-        
+
         # Add stretch to push everything to the top
         layout.addStretch()
     
@@ -61,13 +68,54 @@ class ConfigTab(QWidget):
         """Create the com0com status group."""
         group = QGroupBox("com0com Status")
         layout = QHBoxLayout(group)
-        
+
         self.status_label = QLabel("Checking...")
         self.status_label.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.status_label)
-        
+
         layout.addStretch()
-        
+
+        parent_layout.addWidget(group)
+
+    def _create_bridge_group(self, parent_layout):
+        """Create the bridge control group."""
+        group = QGroupBox("Serial Bridge Control")
+        layout = QVBoxLayout(group)
+
+        # Bridge status row
+        status_layout = QHBoxLayout()
+        status_layout.addWidget(QLabel("Bridge Status:"))
+
+        self.bridge_status_label = QLabel("Stopped")
+        self.bridge_status_label.setStyleSheet("font-weight: bold; color: gray;")
+        status_layout.addWidget(self.bridge_status_label)
+
+        status_layout.addStretch()
+        layout.addLayout(status_layout)
+
+        # Statistics row
+        stats_layout = QHBoxLayout()
+        self.bridge_stats_label = QLabel("No data")
+        stats_layout.addWidget(self.bridge_stats_label)
+        stats_layout.addStretch()
+        layout.addLayout(stats_layout)
+
+        # Control buttons row
+        button_layout = QHBoxLayout()
+
+        self.start_bridge_button = QPushButton("Start Bridge")
+        self.start_bridge_button.clicked.connect(self._on_start_bridge)
+        self.start_bridge_button.setEnabled(False)
+        button_layout.addWidget(self.start_bridge_button)
+
+        self.stop_bridge_button = QPushButton("Stop Bridge")
+        self.stop_bridge_button.clicked.connect(self._on_stop_bridge)
+        self.stop_bridge_button.setEnabled(False)
+        button_layout.addWidget(self.stop_bridge_button)
+
+        button_layout.addStretch()
+        layout.addLayout(button_layout)
+
         parent_layout.addWidget(group)
     
     def _create_creation_group(self, parent_layout):
@@ -210,30 +258,33 @@ class ConfigTab(QWidget):
         try:
             # Get existing pairs
             pairs = self.port_manager.list_virtual_port_pairs()
-            
+
             # Update table
             self.pairs_table.setRowCount(len(pairs))
-            
+
             for row, pair in enumerate(pairs):
                 # Port A
                 self.pairs_table.setItem(row, 0, QTableWidgetItem(pair['port_a']))
-                
+
                 # Port B
                 self.pairs_table.setItem(row, 1, QTableWidgetItem(pair['port_b']))
-                
+
                 # Parameters (combine both)
                 params = f"A: {pair['params_a']}\nB: {pair['params_b']}"
                 self.pairs_table.setItem(row, 2, QTableWidgetItem(params))
-                
+
                 # Delete button
                 delete_btn = QPushButton("Delete")
                 delete_btn.clicked.connect(
                     lambda checked, p=pair['port_a']: self._on_delete_port_pair(p)
                 )
                 self.pairs_table.setCellWidget(row, 3, delete_btn)
-            
+
+            # Enable/disable start bridge button based on port pairs
+            self.start_bridge_button.setEnabled(len(pairs) > 0 and not (self.bridge and self.bridge.is_running()))
+
             logger.debug(f"Refreshed pairs table: {len(pairs)} pair(s)")
-            
+
         except Exception as e:
             logger.error(f"Failed to refresh pairs table: {e}")
     
@@ -337,3 +388,108 @@ class ConfigTab(QWidget):
                     "Make sure you are running as administrator."
                 )
 
+    def _on_start_bridge(self):
+        """Handle start bridge button click."""
+        logger.info("Starting bridge")
+
+        try:
+            # Get existing port pairs
+            pairs = self.port_manager.list_virtual_port_pairs()
+
+            if not pairs:
+                QMessageBox.warning(
+                    self,
+                    "No Port Pairs",
+                    "No virtual port pairs found.\n\n"
+                    "Please create a port pair first."
+                )
+                return
+
+            # Use the first port pair
+            pair = pairs[0]
+            port_a = pair['port_a']
+            port_b = pair['port_b']
+
+            # Create and start bridge
+            self.bridge = SerialBridge(port_a, port_b, baudrate=9600)
+
+            if self.bridge.start():
+                self.bridge_status_label.setText("Running")
+                self.bridge_status_label.setStyleSheet("font-weight: bold; color: green;")
+                self.start_bridge_button.setEnabled(False)
+                self.stop_bridge_button.setEnabled(True)
+                self.status_message.emit(f"Bridge started: {port_a} <-> {port_b}", 3000)
+
+                # Start statistics update timer
+                self.stats_timer = QTimer()
+                self.stats_timer.timeout.connect(self._update_bridge_stats)
+                self.stats_timer.start(1000)  # Update every second
+
+                logger.info(f"Bridge started: {port_a} <-> {port_b}")
+            else:
+                error_msg = self.bridge.error_message or "Unknown error"
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Failed to start bridge:\n{error_msg}"
+                )
+                self.bridge = None
+
+        except Exception as e:
+            logger.error(f"Failed to start bridge: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to start bridge:\n{str(e)}"
+            )
+            self.bridge = None
+
+    def _on_stop_bridge(self):
+        """Handle stop bridge button click."""
+        logger.info("Stopping bridge")
+
+        if self.bridge:
+            try:
+                # Stop statistics timer
+                if hasattr(self, 'stats_timer'):
+                    self.stats_timer.stop()
+
+                # Stop bridge
+                self.bridge.stop()
+
+                self.bridge_status_label.setText("Stopped")
+                self.bridge_status_label.setStyleSheet("font-weight: bold; color: gray;")
+                self.start_bridge_button.setEnabled(True)
+                self.stop_bridge_button.setEnabled(False)
+                self.bridge_stats_label.setText("No data")
+                self.status_message.emit("Bridge stopped", 3000)
+
+                self.bridge = None
+                logger.info("Bridge stopped")
+
+            except Exception as e:
+                logger.error(f"Failed to stop bridge: {e}")
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Failed to stop bridge:\n{str(e)}"
+                )
+
+    def _update_bridge_stats(self):
+        """Update bridge statistics display."""
+        if self.bridge and self.bridge.is_running():
+            stats = self.bridge.get_statistics()
+
+            uptime = int(stats['uptime_seconds'])
+            hours = uptime // 3600
+            minutes = (uptime % 3600) // 60
+            seconds = uptime % 60
+
+            stats_text = (
+                f"Uptime: {hours:02d}:{minutes:02d}:{seconds:02d} | "
+                f"A→B: {stats['bytes_a_to_b']} bytes | "
+                f"B→A: {stats['bytes_b_to_a']} bytes | "
+                f"Total: {stats['total_bytes']} bytes"
+            )
+
+            self.bridge_stats_label.setText(stats_text)

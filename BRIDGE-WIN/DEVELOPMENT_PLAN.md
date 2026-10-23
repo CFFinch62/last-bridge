@@ -133,15 +133,24 @@ BRIDGE-WIN is a Windows port of the Linux BRIDGE application, providing virtual 
 
 ---
 
-### Phase 4: Serial Data Sniffing
-**Estimated Time**: 10-12 hours  
-**Status**: Not Started
+### Phase 4: Serial Bridge & Sniffing
+**Estimated Time**: 10-12 hours
+**Status**: ⏳ IN PROGRESS (Bridge complete, sniffing pending)
+
+#### 4.0 Serial Bridge Engine ✅ DONE (Session 8)
+- [x] Create `backend/bridge.py` (289 lines)
+- [x] Implement bidirectional threading (A→B and B→A)
+- [x] Add real-time statistics tracking
+- [x] Add data callback for sniffing integration
+- [x] Update `gui/config_tab.py` with bridge controls (496 lines)
+- [x] Add Start/Stop bridge buttons
+- [x] Add bridge status and statistics display
+- [ ] Test bridge functionality with virtual port pairs
 
 #### 4.1 Core Sniffing Engine
 - [ ] Create `backend/sniffing.py`
-- [ ] Implement serial port monitoring thread
-- [ ] Add data capture from virtual ports
-- [ ] Implement data direction filtering (RX/TX/Both)
+- [ ] Implement data capture from bridge callback
+- [ ] Add data direction filtering (RX/TX/Both)
 - [ ] Add data format conversion (Raw/Hex/Text)
 - [ ] Implement circular buffer for data
 - [ ] Add statistics tracking (bytes RX/TX, packets)

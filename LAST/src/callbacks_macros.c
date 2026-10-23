@@ -138,7 +138,38 @@ void on_script_window_destroy(GtkWidget *widget, gpointer data) {
 
 void on_script_enable_toggled(GtkWidget *widget, gpointer data) {
     SerialTerminal *terminal = (SerialTerminal *)data;
-    terminal->scripting_enabled = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+    gboolean enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+
+    if (enable) {
+        // Load whatever is in the editor so the engine has a script to run
+        gboolean loaded = FALSE;
+        if (terminal->lua_state && terminal->script_text_view) {
+            GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(terminal->script_text_view));
+            GtkTextIter start, end;
+            gtk_text_buffer_get_bounds(buffer, &start, &end);
+            gchar *script_content = gtk_text_buffer_get_text(buffer, &start, &end, FALSE);
+            if (script_content && strlen(script_content) > 0) {
+                loaded = scripting_load_script(terminal, script_content);
+            }
+            g_free(script_content);
+        }
+
+        if (!loaded) {
+            GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(terminal->script_window),
+                                                            GTK_DIALOG_MODAL,
+                                                            GTK_MESSAGE_ERROR,
+                                                            GTK_BUTTONS_OK,
+                                                            "Cannot enable scripting.\n\n"
+                                                            "Enter or load a valid Lua script first "
+                                                            "(see the terminal output for errors).");
+            gtk_dialog_run(GTK_DIALOG(error_dialog));
+            gtk_widget_destroy(error_dialog);
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), FALSE);
+            return;
+        }
+    }
+
+    terminal->scripting_enabled = enable;
 
     // Save settings
     update_settings_from_ui(terminal);
@@ -327,6 +358,11 @@ void on_script_clear_clicked(GtkWidget *widget, gpointer data) {
     // Clear the script from the engine
     if (terminal->lua_state) {
         scripting_clear_script(terminal);
+    }
+
+    // Clearing disables scripting; keep the checkbox in sync
+    if (terminal->script_enable_check) {
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(terminal->script_enable_check), FALSE);
     }
 }
 

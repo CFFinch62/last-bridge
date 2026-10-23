@@ -168,7 +168,7 @@ void on_help_about_activate(GtkWidget *widget, gpointer data) {
         "SOFTWARE.");
 
     gtk_about_dialog_set_wrap_license(GTK_ABOUT_DIALOG(about_dialog), TRUE);
-    gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(about_dialog), "https://github.com/fragillidae-software");
+    gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(about_dialog), "https://www.fragillidaesoftware.com");
     gtk_about_dialog_set_website_label(GTK_ABOUT_DIALOG(about_dialog), "Fragillidae Software");
 
     gtk_window_set_transient_for(GTK_WINDOW(about_dialog), GTK_WINDOW(terminal->window));

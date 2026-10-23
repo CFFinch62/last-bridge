@@ -18,13 +18,13 @@
 ## Rules & Priorities
 
 1. Project should be modular for ease of dev, testing, and maintenance
-2. Absolute max line limit oer file is 500.
-3. Prefered line limit when possible is 300.
-4. After eash tested dev session:
+2. Absolute max line limit per file is 500.
+3. Preferred line limit when possible is 300.
+4. After each tested dev session:
     a. Update `DEVELOPMENT_PLAN.md` with task status
     b. Update `CHANGELOG.md` with session details
     c. Make a GIT commit with message like "Session 3: Test application startup, begin Phase 2 (com0com integration)"
-5. No creation o fnew doc files with out explicit agreement from all parties
+5. No creation of new doc files without explicit agreement from all parties
 ---
 
 

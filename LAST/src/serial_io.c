@@ -191,11 +191,7 @@ void *read_thread_func(void *arg) {
                 }
 
                 // Clean up script result if allocated
-                if (script_result) {
-                    if (script_result->result_data) free(script_result->result_data);
-                    if (script_result->error_message) free(script_result->error_message);
-                    free(script_result);
-                }
+                scripting_free_result(script_result);
             }
         }
     }

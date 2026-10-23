@@ -112,7 +112,10 @@ int main(int argc, char *argv[]) {
     // Initialize port list
     scan_all_serial_devices(GTK_COMBO_BOX_TEXT(terminal.port_combo));
 
-    // Apply loaded settings to UI widgets BEFORE connecting signals
+    // Show window first so all widgets exist and can be manipulated
+    gtk_widget_show_all(terminal.window);
+
+    // Apply loaded settings to UI widgets AFTER showing all (so we can hide specific widgets)
     apply_loaded_settings(&terminal);
 
     // Apply initial appearance settings
@@ -123,9 +126,6 @@ int main(int argc, char *argv[]) {
 
     // Start statistics update timer (every second)
     g_timeout_add(1000, update_statistics_timer, &terminal);
-
-    // Show window
-    gtk_widget_show_all(terminal.window);
 
     // Force window to exact size after all widgets are shown
     // This overrides GTK's natural sizing which may grow the window based on content

@@ -6,6 +6,9 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+// Feature test macros for POSIX functions - MUST be before includes
+#define _GNU_SOURCE
+
 // Standard includes
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,9 +22,6 @@
 #include <fcntl.h>
 #include <time.h>
 #include <pthread.h>
-
-// Feature test macros for POSIX functions
-#define _GNU_SOURCE
 
 // GTK includes
 #include <gtk/gtk.h>

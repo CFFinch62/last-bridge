@@ -4,28 +4,46 @@
 -- Global variables for script state
 local message_count = 0
 local connection_time = 0
+local rx_buffer = ""
 
--- Called when data is received from the serial connection
-function on_data_received(data)
+-- Process one complete line (an NMEA sentence or other text)
+local function handle_line(line)
     message_count = message_count + 1
-    
-    -- Log received data with count
-    log("Received message #" .. message_count .. ": " .. data)
-    
+
+    -- Log received line with count
+    log("Received message #" .. message_count .. ": " .. line)
+
     -- Check if it's an NMEA sentence
-    if string.sub(data, 1, 1) == "$" then
-        local parsed = parse_nmea(data)
-        if parsed then
-            log("NMEA sentence parsed: " .. parsed.talker .. parsed.sentence)
+    if string.sub(line, 1, 1) == "$" then
+        local parsed = parse_nmea(line)
+        if parsed and parsed.talker and parsed.type then
+            log("NMEA sentence parsed: " .. parsed.talker .. parsed.type ..
+                " (" .. #(parsed.fields or {}) .. " fields)")
         end
     end
-    
+
     -- Auto-respond to specific commands
-    if string.find(data, "PING") then
+    if string.find(line, "PING") then
         send("PONG\r\n")
         log("Auto-responded with PONG")
     end
-    
+end
+
+-- Called when data is received from the serial connection.
+-- Data arrives in arbitrary chunks (a sentence may be split across calls,
+-- or one call may hold several), so buffer it and handle complete lines.
+function on_data_received(data)
+    rx_buffer = rx_buffer .. data
+
+    for line in string.gmatch(rx_buffer, "([^\r\n]*)\r?\n") do
+        if #line > 0 then
+            handle_line(line)
+        end
+    end
+
+    -- Keep any trailing partial line for the next chunk
+    rx_buffer = string.match(rx_buffer, "[^\n]*$")
+
     -- Return nil to allow normal processing
     return nil
 end
@@ -49,7 +67,7 @@ function on_connection_open()
     -- Get connection info
     local info = get_connection_info()
     if info then
-        log("Connection details: " .. info.type .. " - " .. info.details)
+        log("Connection details: " .. info.type .. " - " .. tostring(info.port))
     end
     
     -- Send a welcome message after 1 second (simulated)
@@ -70,7 +88,8 @@ end
 
 -- Example function to create an NMEA sentence
 function create_test_nmea()
-    local nmea = create_nmea("GP", "GGA", "123456.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,")
+    local nmea = create_nmea("GP", "GGA", {"123456.00", "4807.038", "N", "01131.000", "E",
+                                                 "1", "08", "0.9", "545.4", "M", "46.9", "M", "", ""})
     if nmea then
         log("Created NMEA sentence: " .. nmea)
         return nmea

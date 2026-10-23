@@ -6,6 +6,7 @@
 #include "nullmodem.h"
 #include "sniffing.h"
 #include "utils.h"
+#include <unistd.h>
 
 gboolean check_socat_available(void) {
     int result = system("which socat > /dev/null 2>&1");

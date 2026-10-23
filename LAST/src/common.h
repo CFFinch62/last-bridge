@@ -186,6 +186,7 @@ typedef struct {
     void *lua_state;                    // lua_State* (void* to avoid including lua.h here)
     gboolean scripting_enabled;
     char *script_content;
+    GMutex lua_mutex;                   // Guards lua_state (used by GUI and read thread)
 
     // Script UI widgets
     GtkWidget *script_window;

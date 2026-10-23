@@ -8,7 +8,9 @@
 // Initialize Lua scripting engine
 gboolean scripting_init(SerialTerminal *terminal) {
     if (!terminal) return FALSE;
-    
+
+    g_mutex_init(&terminal->lua_mutex);
+
     // Create new Lua state
     terminal->lua_state = luaL_newstate();
     if (!terminal->lua_state) {
@@ -42,45 +44,49 @@ gboolean scripting_init(SerialTerminal *terminal) {
 // Cleanup Lua scripting engine
 void scripting_cleanup(SerialTerminal *terminal) {
     if (!terminal) return;
-    
+
+    g_mutex_lock(&terminal->lua_mutex);
+    terminal->scripting_enabled = FALSE;
+
     if (terminal->lua_state) {
         lua_close(terminal->lua_state);
         terminal->lua_state = NULL;
     }
-    
+
     if (terminal->script_content) {
         g_free(terminal->script_content);
         terminal->script_content = NULL;
     }
-    
-    terminal->scripting_enabled = FALSE;
+    g_mutex_unlock(&terminal->lua_mutex);
 }
 
 // Load script content
 gboolean scripting_load_script(SerialTerminal *terminal, const char *script_content) {
     if (!terminal || !terminal->lua_state || !script_content) return FALSE;
-    
-    // Clear existing script
+
+    g_mutex_lock(&terminal->lua_mutex);
+
+    // Compile and run the script once so its functions and top-level
+    // state (e.g. counters) are defined and persist between events
+    int result = luaL_loadstring(terminal->lua_state, script_content);
+    if (result == LUA_OK) {
+        result = lua_pcall(terminal->lua_state, 0, 0, 0);
+    }
+    if (result != LUA_OK) {
+        const char *error = lua_tostring(terminal->lua_state, -1);
+        g_print("Script load error: %s\n", error ? error : "unknown error");
+        lua_pop(terminal->lua_state, 1);
+        g_mutex_unlock(&terminal->lua_mutex);
+        return FALSE;
+    }
+
+    // Store new script content
     if (terminal->script_content) {
         g_free(terminal->script_content);
     }
-    
-    // Store new script content
     terminal->script_content = g_strdup(script_content);
-    
-    // Test script compilation
-    int result = luaL_loadstring(terminal->lua_state, script_content);
-    if (result != LUA_OK) {
-        const char *error = lua_tostring(terminal->lua_state, -1);
-        g_print("Script compilation error: %s\n", error);
-        lua_pop(terminal->lua_state, 1);
-        return FALSE;
-    }
-    
-    // Pop the compiled function
-    lua_pop(terminal->lua_state, 1);
-    
-    terminal->scripting_enabled = TRUE;
+
+    g_mutex_unlock(&terminal->lua_mutex);
     g_print("Script loaded successfully\n");
     return TRUE;
 }
@@ -108,50 +114,51 @@ gboolean scripting_load_script_file(SerialTerminal *terminal, const char *filena
 // Clear loaded script
 void scripting_clear_script(SerialTerminal *terminal) {
     if (!terminal) return;
-    
+
+    g_mutex_lock(&terminal->lua_mutex);
+    terminal->scripting_enabled = FALSE;
+
     if (terminal->script_content) {
         g_free(terminal->script_content);
         terminal->script_content = NULL;
     }
-    
-    terminal->scripting_enabled = FALSE;
+
+    // Remove event handlers defined by the old script
+    if (terminal->lua_state) {
+        static const char *handlers[] = {"on_data_received", "on_data_send",
+                                         "on_connection_open", "on_connection_close"};
+        for (size_t i = 0; i < G_N_ELEMENTS(handlers); i++) {
+            lua_pushnil(terminal->lua_state);
+            lua_setglobal(terminal->lua_state, handlers[i]);
+        }
+    }
+    g_mutex_unlock(&terminal->lua_mutex);
     g_print("Script cleared\n");
 }
 
 // Execute script function with context
 static ScriptResult* execute_script_function(SerialTerminal *terminal, const char *function_name, 
                                            const char *data, size_t length) {
-    if (!terminal || !terminal->lua_state || !terminal->scripting_enabled || !function_name) {
+    if (!terminal || !function_name) return NULL;
+
+    g_mutex_lock(&terminal->lua_mutex);
+
+    // No script loaded yet (e.g. scripting enabled with an empty engine)
+    if (!terminal->lua_state || !terminal->scripting_enabled || !terminal->script_content) {
+        g_mutex_unlock(&terminal->lua_mutex);
         return NULL;
     }
-    
+
     ScriptResult *result = g_malloc0(sizeof(ScriptResult));
     result->success = FALSE;
     result->suppress_original = FALSE;
-    
-    // Load the script
-    int load_result = luaL_loadstring(terminal->lua_state, terminal->script_content);
-    if (load_result != LUA_OK) {
-        const char *error = lua_tostring(terminal->lua_state, -1);
-        result->error_message = g_strdup(error);
-        lua_pop(terminal->lua_state, 1);
-        return result;
-    }
-    
-    // Execute the script to define functions
-    int exec_result = lua_pcall(terminal->lua_state, 0, 0, 0);
-    if (exec_result != LUA_OK) {
-        const char *error = lua_tostring(terminal->lua_state, -1);
-        result->error_message = g_strdup(error);
-        lua_pop(terminal->lua_state, 1);
-        return result;
-    }
-    
-    // Get the function
+
+    // Get the function (defined when the script was loaded)
     lua_getglobal(terminal->lua_state, function_name);
     if (!lua_isfunction(terminal->lua_state, -1)) {
         lua_pop(terminal->lua_state, 1);
         result->success = TRUE; // Function doesn't exist, but that's OK
+        g_mutex_unlock(&terminal->lua_mutex);
         return result;
     }
     
@@ -166,8 +173,9 @@ static ScriptResult* execute_script_function(SerialTerminal *terminal, const cha
     int call_result = lua_pcall(terminal->lua_state, 1, 2, 0);
     if (call_result != LUA_OK) {
         const char *error = lua_tostring(terminal->lua_state, -1);
-        result->error_message = g_strdup(error);
+        result->error_message = g_strdup(error ? error : "unknown error");
         lua_pop(terminal->lua_state, 1);
+        g_mutex_unlock(&terminal->lua_mutex);
         return result;
     }
     
@@ -187,7 +195,8 @@ static ScriptResult* execute_script_function(SerialTerminal *terminal, const cha
     
     lua_pop(terminal->lua_state, 2);
     result->success = TRUE;
-    
+
+    g_mutex_unlock(&terminal->lua_mutex);
     return result;
 }
 
@@ -217,16 +226,17 @@ ScriptResult* scripting_execute_manual(SerialTerminal *terminal, const char *scr
     
     ScriptResult *result = g_malloc0(sizeof(ScriptResult));
     result->success = FALSE;
-    
+
+    g_mutex_lock(&terminal->lua_mutex);
     int exec_result = luaL_dostring(terminal->lua_state, script_code);
     if (exec_result != LUA_OK) {
         const char *error = lua_tostring(terminal->lua_state, -1);
-        result->error_message = g_strdup(error);
+        result->error_message = g_strdup(error ? error : "unknown error");
         lua_pop(terminal->lua_state, 1);
-        return result;
+    } else {
+        result->success = TRUE;
     }
-    
-    result->success = TRUE;
+    g_mutex_unlock(&terminal->lua_mutex);
     return result;
 }
 
@@ -326,15 +336,14 @@ int lua_last_get_connection_info(lua_State *L) {
 
     if (terminal->connection_type == CONNECTION_TYPE_SERIAL) {
         // Serial-specific info
-        const char *port = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(terminal->port_combo));
-        if (port) {
-            lua_pushstring(L, port);
+        // Use cached settings: this may run on the read thread, where GTK calls are unsafe
+        if (terminal->saved_port) {
+            lua_pushstring(L, terminal->saved_port);
             lua_setfield(L, -2, "port");
         }
 
-        const char *baud = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(terminal->baudrate_combo));
-        if (baud) {
-            lua_pushstring(L, baud);
+        if (terminal->saved_baudrate) {
+            lua_pushstring(L, terminal->saved_baudrate);
             lua_setfield(L, -2, "baud_rate");
         }
     } else {
@@ -394,60 +403,68 @@ int lua_last_calculate_checksum(lua_State *L) {
     return 1;
 }
 
-// parse_nmea(sentence) - Parse NMEA sentence
+// parse_nmea(sentence) - Parse NMEA ($) or AIS (!) sentence
 int lua_last_parse_nmea(lua_State *L) {
-    const char *sentence = luaL_checkstring(L, 1);
+    size_t total_length;
+    const char *sentence = luaL_checklstring(L, 1, &total_length);
 
-    if (!sentence || sentence[0] != '$') {
+    if (total_length < 6 || (sentence[0] != '$' && sentence[0] != '!')) {
         lua_pushnil(L);
         return 1;
     }
 
+    // Ignore trailing CR/LF
+    while (total_length > 0 && (sentence[total_length - 1] == '\r' || sentence[total_length - 1] == '\n')) {
+        total_length--;
+    }
+
     lua_newtable(L);
 
-    // Find the end of the sentence (before checksum)
-    const char *checksum_start = strrchr(sentence, '*');
-    size_t data_length = checksum_start ? (checksum_start - sentence - 1) : (strlen(sentence) - 1);
+    // Body is everything between the start character and '*' (or end of line)
+    const char *checksum_start = memchr(sentence, '*', total_length);
+    size_t body_end = checksum_start ? (size_t)(checksum_start - sentence) : total_length;
 
-    // Extract talker ID (first 2 characters after $)
-    if (data_length >= 2) {
-        char talker[3] = {sentence[1], sentence[2], '\0'};
-        lua_pushstring(L, talker);
-        lua_setfield(L, -2, "talker");
-    }
+    // Talker ID (2 chars) and sentence type (3 chars)
+    char talker[3] = {sentence[1], sentence[2], '\0'};
+    lua_pushstring(L, talker);
+    lua_setfield(L, -2, "talker");
 
-    // Extract sentence type (next 3 characters)
-    if (data_length >= 5) {
-        char sentence_type[4] = {sentence[3], sentence[4], sentence[5], '\0'};
-        lua_pushstring(L, sentence_type);
-        lua_setfield(L, -2, "type");
-    }
+    char sentence_type[4] = {sentence[3], sentence[4], sentence[5], '\0'};
+    lua_pushstring(L, sentence_type);
+    lua_setfield(L, -2, "type");
 
-    // Extract data fields (comma-separated)
-    if (data_length > 6) {
-        const char *data_start = sentence + 6;
-        char *data_copy = g_strndup(data_start, data_length - 5);
-
-        lua_newtable(L);
-        char *token = strtok(data_copy, ",");
+    // Data fields (comma-separated, empty fields preserved so indexes stay stable)
+    lua_newtable(L);
+    if (body_end > 6 && sentence[6] == ',') {
+        const char *field_start = sentence + 7;
+        const char *body_stop = sentence + body_end;
         int field_index = 1;
-
-        while (token != NULL) {
-            lua_pushstring(L, token);
-            lua_rawseti(L, -2, field_index++);
-            token = strtok(NULL, ",");
+        for (const char *p = field_start; ; p++) {
+            if (p == body_stop || *p == ',') {
+                lua_pushlstring(L, field_start, p - field_start);
+                lua_rawseti(L, -2, field_index++);
+                if (p == body_stop) break;
+                field_start = p + 1;
+            }
         }
-
-        lua_setfield(L, -2, "fields");
-        g_free(data_copy);
     }
+    lua_setfield(L, -2, "fields");
 
-    // Extract checksum if present
-    if (checksum_start && strlen(checksum_start) >= 3) {
+    // Checksum and validity
+    gboolean valid = FALSE;
+    if (checksum_start && total_length - body_end >= 3) {
         char checksum[3] = {checksum_start[1], checksum_start[2], '\0'};
         lua_pushstring(L, checksum);
         lua_setfield(L, -2, "checksum");
+
+        unsigned char calculated = 0;
+        for (size_t i = 1; i < body_end; i++) {
+            calculated ^= (unsigned char)sentence[i];
+        }
+        valid = (calculated == (unsigned char)strtoul(checksum, NULL, 16));
     }
+    lua_pushboolean(L, valid);
+    lua_setfield(L, -2, "valid");
 
     return 1;
 }

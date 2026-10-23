@@ -27,7 +27,69 @@ Each entry includes:
 
 ## Development Log
 
-### 2025-11-08
+### 2025-11-08 - Session 8
+
+**Phase**: 4 (Part 1) - Serial Bridge Implementation
+**Status**: ✅ PARTIAL COMPLETE - Bridge engine and GUI controls implemented
+**Time**: ~1 hour
+
+#### Summary
+Implemented the core serial bridge functionality that was missing from the original plan. On Linux, socat automatically bridges virtual ports, but on Windows with com0com, we need to implement the bridging logic ourselves. Created a threading-based bidirectional bridge and integrated it into the GUI.
+
+#### Files Created
+1. **`backend/bridge.py`** (289 lines)
+   - `SerialBridge` class with bidirectional data transfer
+   - Threading architecture (one thread per direction: A→B and B→A)
+   - Real-time statistics tracking (bytes transferred, uptime)
+   - Data callback support for future sniffing integration
+   - Comprehensive error handling and lifecycle management
+   - Non-blocking reads with 100ms timeout
+   - Clean port cleanup on stop
+
+#### Files Modified
+1. **`gui/config_tab.py`** (updated to 496 lines)
+   - Added "Serial Bridge Control" section
+   - Bridge status indicator (Stopped/Running with color coding)
+   - Real-time statistics display (uptime, bytes A→B, bytes B→A, total)
+   - Start/Stop bridge buttons with smart enable/disable logic
+   - Statistics update timer (refreshes every second)
+   - Integrated with SerialBridge backend
+
+#### Technical Implementation
+
+**Bridge Architecture**:
+```
+Port A ←→ Thread A→B ←→ Port B
+       ←→ Thread B→A ←→
+```
+
+- Two independent daemon threads for bidirectional data flow
+- Each thread continuously reads from source port and writes to destination
+- Statistics tracking for both directions
+- Optional data callback for sniffing (ready for Phase 4.2)
+
+**Key Design Decisions**:
+- Used threading instead of asyncio for simplicity and compatibility
+- 100ms read timeout to avoid busy waiting
+- 1 second write timeout for error handling
+- Daemon threads for automatic cleanup
+- State machine: STOPPED → STARTING → RUNNING → STOPPING → STOPPED
+
+#### Testing Status
+- ⚠️ Not yet tested with actual port pairs (requires admin privileges)
+- GUI launches successfully and shows bridge controls
+- Next session: test with virtual port pairs
+
+#### Next Steps
+1. Test bridge functionality with virtual port pairs
+2. Implement sniffing engine (`backend/sniffing.py`)
+3. Create sniffing GUI tab (`gui/sniffing_tab.py`)
+4. Add TCP/file/pipe output options
+5. Commit Phase 4 when complete
+
+---
+
+### 2025-11-08 - Session 7
 
 #### Session 7: Phase 3 - GUI Implementation
 
