@@ -190,6 +190,10 @@ run_with_sudo cp /tmp/bridge.desktop "$DESKTOP_DIR/"
 # Clean up temporary files
 rm /tmp/last.desktop /tmp/bridge.desktop
 
+# Icons named by the desktop entries' Icon= lines (uninstall.sh removes them)
+run_with_sudo cp LAST/last-icon.png "$ICON_DIR/last.png"
+run_with_sudo cp BRIDGE/bridge-icon.png "$ICON_DIR/bridge.png"
+
 echo -e "${GREEN}✓ Desktop entries created${NC}"
 
 echo ""
