@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub release](https://img.shields.io/github/release/CFFinch62/LastBridge.svg)](https://github.com/CFFinch62/LastBridge/releases)
 
-A comprehensive serial communication solution consisting of two integrated applications:
+A comprehensive Linux serial communication solution consisting of two integrated applications:
 
 - **LAST** - Linux Advanced Serial Transceiver (GTK3 serial terminal)
 - **BRIDGE** - Virtual Null Modem Bridge (creates virtual serial devices)
